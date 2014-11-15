@@ -1,25 +1,64 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+title: "Reproducible Research: Peer Assessment 1"  
+=============
+output: html_document  
+keep_md: true  
+
+Use whatever directory string is appropriate for you - after that, the following code will all be referential to your environment.  
+```{r}
+# Personalize the working directory - this was mine
+mywd <-"~/Documents/Coursera/05-ReproducableResearch/05_RepData_PeerAssessment1"
+# initiate your working directory.
+setwd(mywd)
+```
+
+To  source the raw data, you can fork the GitHub repository https://github.com/Saoirsegirl/05_RepData_PeerAssessment1 and sync a local git or pull the data from the course web link below. The following code block will assess your choice and proceed as needed.
+```{r source raw files}
+# source and unzip the raw data file into the working directory.
+if (!file.exists('/activity.zip')) {  # this will be in place if you fork the repo
+    file_URL <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+    download.file(file_URL, "./activity.zip", method = "curl" )
+}
+unzip("./activity.zip", overwrite = TRUE)   # unzip to create "activity.csv" in your working directory
+unzip_date <- date()
+```   
+The raw .csv file needs to be read into R and some data transformations made to prepare the data for use in the following Analysis steps.
+```{r read data}
+raw <- read.csv("./activity.csv", stringsAsFactors = FALSE)
+summary(raw)
+```
+To simplify the following statistical analysis, reformatting the date (a factor) and interval(an integer) elements into a class that allows for Date/Time manipulations will be required. We will use the lubridate package to execute the transformations. The tricky on will be the interval to time formatting, so let's take a closer look at how the data for the 5 minute intravals are structured.
+```{r understanding interval}
+raw[c(1,2,10,13,22,277,288),]
+```
+We see the first interval is 0, the second is 5 and the 10th 45. Which implies the interval marks the begining of the 5 minute interval. As there are 12, 5 minute intervals per hour, we expect that interval 13 will be the first interval of the 2nd or 1 o'clock hour.  And we see it is identified as "100".  Thus the 10th and 22nd intervals should reflect the 45th minute of hour 0 and 1 - viola.  The final test is that the 277th interval is the first 5 minute block of hour 23 and the final interval (12 x 24 == 288) is "2355" - which it is.  So we need to convert "integer" to "character" and then parse the hour and minutes into a time format.  Here goes:
+```{r date time conversions}
+library(lubridate)
+class(raw$interval) <- "character"
+interval2time <- function(val) {
+    if (nchar(val) < 2) { # for hour 0
+        val <- paste0("00:0",val) }
+    else if (nchar(val) < 3) {  # for hour 0  and minutes > 5
+        val <- paste0("00:", val) }
+    else if (nchar(val) < 4) { # for hours 1 to 9
+        val <- paste0("0", substr(val,1,1),":",substr(val,2,3)) }
+    else {val <- paste0(substr(val,1,2),":",substr(val,3,4)) }  # for hours 10 to 23  
+    } 
+raw$time <- sapply(raw$interval,interval2time)
+charDT <- paste(raw$date, raw$time)
+DateTime <- ymd_hm(charDT)
+data <- cbind(raw, DateTime)
+###What is mean total number of steps taken per day?
+library(ggplot2)
+stepsPerDay <- aggregate(steps ~ date, data = data, FUN = sum)
+hist(stepsPerDay$steps)
 
 
-## Loading and preprocessing the data
+### What is the average daily activity pattern?
 
 
 
-## What is mean total number of steps taken per day?
+### Imputing missing values
 
 
 
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+### Are there differences in activity patterns between weekdays and weekends?
