@@ -2,7 +2,7 @@ title: "Reproducible Research: Peer Assessment 1"
 =============
 output: html_document  
 keep_md: true  
-
+## Source & Prepare the Data  
 Use whatever directory string is appropriate for you - after that, the following code will all be referential to your environment.  
 ```{r}
 # Personalize the working directory - this was mine
@@ -11,26 +11,35 @@ mywd <-"~/Documents/Coursera/05-ReproducableResearch/05_RepData_PeerAssessment1"
 setwd(mywd)
 ```
 
-To  source the raw data, you can fork the GitHub repository https://github.com/Saoirsegirl/05_RepData_PeerAssessment1 and sync a local git or pull the data from the course web link below. The following code block will assess your choice and proceed as needed.
+To  source the raw data, you can fork the GitHub repository https://github.com/Saoirsegirl/05_RepData_PeerAssessment1 and sync to a local git - which will copy in  the needed data and code files.  
+OR  
+You can pull the data from the course web link contained in the code block below.  
+The following code block will assess your choice and proceed as needed.
 ```{r source raw files}
 # source and unzip the raw data file into the working directory.
 if (!file.exists('/activity.zip')) {  # this will be in place if you fork the repo
+    # this will be run if you need the program to source from teh class library.
     file_URL <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
     download.file(file_URL, "./activity.zip", method = "curl" )
 }
-unzip("./activity.zip", overwrite = TRUE)   # unzip to create "activity.csv" in your working directory
-unzip_date <- date()
+unzip("./activity.zip", overwrite = TRUE)   # unzip to create "activity.csv" 
+unzip_date <- date() 
 ```   
-The raw .csv file needs to be read into R and some data transformations made to prepare the data for use in the following Analysis steps.
+The raw .csv file needs to be read into R, its structures evaluated, and some data transformations made to prepare the data for use in the following Analysis steps. So let's read it in and confirm its contents.  
 ```{r read data}
 raw <- read.csv("./activity.csv", stringsAsFactors = FALSE)
 summary(raw)
+raw_summary <- summary(raw)
 ```
-To simplify the following statistical analysis, reformatting the date (a factor) and interval(an integer) elements into a class that allows for Date/Time manipulations will be required. We will use the lubridate package to execute the transformations. The tricky on will be the interval to time formatting, so let's take a closer look at how the data for the 5 minute intravals are structured.
+To simplify the following statistical analysis, we will reformat date (a character string) to a date format and the interval (an integer) elements into a class that allows for certain Date/Time manipulations. We will use the lubridate package to execute the transformations and keep the originals as well. The tricky one will be the interval to time formatting, so let's take a closer look at how the data for the 5 minute intravals are structured.
 ```{r understanding interval}
 raw[c(1,2,10,13,22,277,288),]
 ```
-We see the first interval is 0, the second is 5 and the 10th 45. Which implies the interval marks the begining of the 5 minute interval. As there are 12, 5 minute intervals per hour, we expect that interval 13 will be the first interval of the 2nd or 1 o'clock hour.  And we see it is identified as "100".  Thus the 10th and 22nd intervals should reflect the 45th minute of hour 0 and 1 - viola.  The final test is that the 277th interval is the first 5 minute block of hour 23 and the final interval (12 x 24 == 288) is "2355" - which it is.  So we need to convert "integer" to "character" and then parse the hour and minutes into a time format.  Here goes:
+We see the first interval is 0, the second is 5 and the 10th 45. Which implies the interval marks the begining of each five (5) minute interval. As there are 12, five minute intervals per hour, we expect that interval 13 will be the first interval of the 2nd or 1 o'clock hour.  And we see it is identified as "100".  To further confirm the pattern let's use the 10th and 22nd intervals which should reflect the 45th minute of hour 0 and 1 - and viola. 
+  
+The final test is that the 277th interval should be the first 5 minute or '00' block of hour 23 and the final interval (12 x 24 == 288) is "2355" - which they are.  So now we know that we need to convert "integer" to "character" and then parse the hour and minutes into a character pattern that can be easily converted into a date/time format when paired with date.  
+  
+Finally we will print out the summary of the new 'data' to confirm the core information has not been improperly transformed. Here goes:
 ```{r date time conversions}
 library(lubridate)
 class(raw$interval) <- "character"
@@ -47,18 +56,39 @@ raw$time <- sapply(raw$interval,interval2time)
 charDT <- paste(raw$date, raw$time)
 DateTime <- ymd_hm(charDT)
 data <- cbind(raw, DateTime)
-###What is mean total number of steps taken per day?
-library(ggplot2)
+raw_summary
+summary(data)
+```
+The comparison of the summary(raw) output and summary(data) output, shows that the steps and date column remain exactly as before, the interval column is transformed into a character vector and the resulting time and DateTime columns mimic the orginal data as desired.  We are good to go!!  
+
+## Analysis Steps
+### 1) What is mean total number of steps taken per day?
+To display the daily total of steps the raw data is aggregated by day and the results outputted to an analysis data set "stepsPerDay". The following plot shows the daily totals, followed by the mean and median.
+```{r Req_1}
+library(ggplot2, stringr)
 stepsPerDay <- aggregate(steps ~ date, data = data, FUN = sum)
-hist(stepsPerDay$steps)
+meanSPD <- round(mean(stepsPerDay$steps),0)
+medianSPD <- median(stepsPerDay$steps)
+```
+```{r Plot_1, fig.height = 4, fig.width = 8, fig.align='center'}
+g <- ggplot(stepsPerDay, aes(date, steps))
+g + geom_bar(stat = "identity") + 
+    theme_bw() +
+    geom_hline(yintercept = meanSPD, colour = "red") +
+    theme(axis.text.x=element_text(angle = -90, hjust = 0)) +
+    labs(title = "Steps Per Day") +
+    labs(x = "Date") +
+    labs(y = "Total Steps")
+```
+  
+A summary of this set shows the mean to be `r format(meanSPD, big.mark = ",")` (as a red line in the plot) and the median to be `r format(medianSPD, big.mark = ",")`.  
+
+### 2) What is the average daily activity pattern?
 
 
-### What is the average daily activity pattern?
+
+### 3) Imputing missing values
 
 
 
-### Imputing missing values
-
-
-
-### Are there differences in activity patterns between weekdays and weekends?
+### 4) Are there differences in activity patterns between weekdays and weekends?
