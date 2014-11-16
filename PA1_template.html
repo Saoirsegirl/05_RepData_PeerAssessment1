@@ -54,7 +54,10 @@ if (window.hljs && document.readyState && document.readyState === "complete") {
 
 <div id="title-reproducible-research-peer-assessment-1" class="section level1">
 <h1>title: “Reproducible Research: Peer Assessment 1”</h1>
-<p>output: html_document<br />keep_md: true<br />## Source &amp; Prepare the Data<br />Use whatever directory string is appropriate for you - after that, the following code will all be referential to your environment.</p>
+<p>output: html_document<br />keep_md: true</p>
+<div id="source-prepare-the-data" class="section level2">
+<h2>Source &amp; Prepare the Data</h2>
+<p>Use whatever directory string is appropriate for you - after that, the following code will all be referential to your environment.</p>
 <pre class="r"><code># Personalize the working directory - this was mine
 mywd &lt;-&quot;~/Documents/Coursera/05-ReproducableResearch/05_RepData_PeerAssessment1&quot;
 # initiate your working directory.
@@ -135,6 +138,7 @@ raw_summary</code></pre>
 ##  Max.   :2012-11-30 23:55:00  
 ## </code></pre>
 <p>The comparison of the summary(raw) output and summary(data) output, shows that the steps and date column remain exactly as before, the interval column is transformed into a character vector and the resulting time and DateTime columns mimic the orginal data as desired. We are good to go!!</p>
+</div>
 <div id="analysis-steps" class="section level2">
 <h2>Analysis Steps</h2>
 <div id="what-is-mean-total-number-of-steps-taken-per-day" class="section level3">
