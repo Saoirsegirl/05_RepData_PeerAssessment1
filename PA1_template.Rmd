@@ -71,8 +71,8 @@ meanSPD <- round(mean(stepsPerDay$steps),0)
 medianSPD <- median(stepsPerDay$steps)
 ```
 ```{r Plot_1, fig.height = 4, fig.width = 8, fig.align='center'}
-g <- ggplot(stepsPerDay, aes(date, steps))
-g + geom_bar(stat = "identity") + 
+g1 <- ggplot(stepsPerDay, aes(date, steps))
+g1 + geom_bar(stat = "identity") + 
     theme_bw() +
     geom_hline(yintercept = meanSPD, colour = "red") +
     theme(axis.text.x=element_text(angle = -90, hjust = 0)) +
@@ -84,8 +84,26 @@ g + geom_bar(stat = "identity") +
 A summary of this set shows the mean to be `r format(meanSPD, big.mark = ",")` (as a red line in the plot) and the median to be `r format(medianSPD, big.mark = ",")`.  
 
 ### 2) What is the average daily activity pattern?
+Now we know something about the daily totals, let's alter the point of view and look inside the days, and see if we can see any unique characteristics of the intervals as they average out over the 53 of 60 days for which we have data.  To do this we will aggregate the data by the new 'time' field, which will tell us the begining time of the 5 minute interval with the highest average number of steps.
+```{r Interval_Average_over_days}
+aveStepsPerInterval <- aggregate(steps ~ time, data = data, FUN = mean)
+aveStepsPerInterval <- cbind(t = 1:288,aveStepsPerInterval)
+maxASPI <- max(aveStepsPerInterval$steps)
+maxInt <- aveStepsPerInterval[aveStepsPerInterval$steps == maxASPI,]
+maxTime <- maxInt[,1]
+maxSteps <- round(maxInt[,3],1) 
 
-
+plot(aveStepsPerInterval$t, aveStepsPerInterval$steps, type = 'l', 
+     main = "Average of Steps Per Interval",
+     col = "black",  xaxt = 'n', #pch = 19,
+     xlab = "Start Time of 5-Minute Interval",
+     ylab = "Average of Steps")
+#axisTicks(usr = c(1,288), log = FALSE, nint = 23)
+#axis(1, xaxp = c(0,aveStepsPerInterval$time))
+abline(v = maxTime)
+```
+  
+For the 288 5-minute interval averages we see that the `r maxInt[2]` interval has the highest average (`r maxSteps`) over the 53 days of observed measurements.  
 
 ### 3) Imputing missing values
 
