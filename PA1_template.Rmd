@@ -1,8 +1,13 @@
+---
+output:
+  html_document:
+    keep_md: yes
+---
 title: "Reproducible Research: Peer Assessment 1"  
 =============
 author: Barbara Dornseif
 output: html_document  
-keep_md: true  
+keep_md = true  
 =============
 
 ## Source & Prepare the Data  
