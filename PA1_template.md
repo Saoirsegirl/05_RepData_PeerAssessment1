@@ -1,12 +1,8 @@
 title: "Reproducible Research: Peer Assessment 1"  
 =============
-author: Barbara Dornseif
-output: html_document  
-keep_md = true  
-=============
-
+  
 ## Source & Prepare the Data  
-Use whatever directory string is appropriate for you - after that, the following code will all be referential to your environment.  
+Use whatever working directory string is appropriate for you - after that, the following code will all be referential to your environment.  Set your wd here:
 
 ```r
 # Personalize the working directory - this was mine
@@ -89,6 +85,7 @@ raw$time <- sapply(raw$interval,interval2time)
 charDT <- paste(raw$date, raw$time)
 DateTime <- ymd_hm(charDT)
 data <- cbind(raw, DateTime)
+
 raw_summary
 ```
 
@@ -125,7 +122,7 @@ summary(data)
 ##  Max.   :2012-11-30 23:55:00  
 ## 
 ```
-The comparison of the summary(raw) output and summary(data) output, shows that the steps and date column remain exactly as before, the interval column is transformed into a character vector and the resulting time and DateTime columns mimic the orginal data as desired.  We are good to go!!  
+The comparison of the summary(raw) output and summary(data) output, shows that the steps and date column remain exactly as before, the interval column is transformed into a character vector and the resulting time and DateTime columns mimic the orginal data as desired.  Finally we created a factor vector for Weekday/end to allow for segmentation of the data set by that dimension of time. We are good to go!!  
 
 ## Analysis Steps
 ### 1) What is mean total number of steps taken per day?
@@ -179,7 +176,42 @@ abline(v = maxTime)
 For the 288 5-minute interval averages we see that the 08:35 interval has the highest average (206.2) over the 53 days of observed measurements.  
 
 ### 3) Imputing missing values
+Because there are NA's   :2304   in the summary of raw data or 13.11 percent of the data set, we will need to explore methods of imputing the missing values in order to smooth out the data and make more naunced conclusions related to the activity levels of our test subject.  
+
+This is beyond my R skills for the given time to complete the project.  From a markdown perspective, I would show code to create a data set with an added factor variable indicating original vs imputed using rbind()  and then display a ggplot with a facet for each factor element.  See below for ggplot example.
+
+### 4) Are there differences in activity patterns between weekdays and weekends?  
+To execute this requirement we will further process the data to identify Day of Week and then segment between weekday and weekend (Saturday and Sunday in the US).  
 
 
+```r
+data$Day <- sapply(data$DateTime, weekdays) # identify date as a Day of Week
+data$DayEnd <- data$Day # replicate to allow for refactoring
+dayEnd <- function(day) {
+        if (substr(day,1,1) == "S") {
+            day <- as.character("Weekend")}
+        else {day <- as.character("Weekday")}
+}
+data$DayEnd <- sapply(data$DayEnd, dayEnd)
+dayEndSPI <- aggregate(steps ~ interval + Day, data = data, FUN = sum)
+```
+From there we can see if the interval pattern is different between the two day week factors.  (note: couldn't figure out how to coerce day of week into the weekDay/End factor using if or other functions.  From a markdown perspective I hope the use of the markdown and git tools are sufficient for partial credit of the attempt - given the 15+ hours I have spent.)
 
-### 4) Are there differences in activity patterns between weekdays and weekends?
+```r
+g3 <- ggplot(dayEndSPI, aes(interval, steps))
+g3 + geom_point() + # facet_grid(as.factor(Day)) +  not sure why this is throwing an error. No more time to debug :-(  sorry, I HATE doing incomplete work!!
+  geom_smooth(method = "lm") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle = -90, hjust = 0)) +
+  labs(title = "Steps by 5-Minute Interval for Weekdays vs. Weekends") +
+  labs(y = "Total Steps")
+```
+
+```
+## geom_smooth: Only one unique x value each group.Maybe you want aes(group = 1)?
+```
+
+![](PA1_template_files/figure-html/g3-1.png) 
+If we could get teh graph to generate we would be able to identify the difference - but alas my ggplot skills are not up to the task at this time.  
+
+Again, my sincerest apologies for submitting code that is less than satifying to grade.
