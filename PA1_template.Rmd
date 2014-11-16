@@ -1,7 +1,9 @@
 title: "Reproducible Research: Peer Assessment 1"  
 =============
+author: Barbara Dornseif
 output: html_document  
 keep_md: true  
+=============
 
 ## Source & Prepare the Data  
 Use whatever directory string is appropriate for you - after that, the following code will all be referential to your environment.  
