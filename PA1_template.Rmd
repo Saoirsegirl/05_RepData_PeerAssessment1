@@ -21,115 +21,136 @@ You can pull the data from the course web link contained in the code block below
 The following code block will assess your choice and proceed as needed.
 ```{r source raw files}
 # source and unzip the raw data file into the working directory.
-if (!file.exists('/activity.zip')) {  # this will be in place if you fork the repo
-    # this will be run if you need the program to source from teh class library.
+if (!file.exists('./activity.zip')) {  # this will be in place if you fork the repo
+    # this will be run if you need the program to source from the class library.
     file_URL <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
     download.file(file_URL, "./activity.zip", method = "curl" )
 }
 unzip("./activity.zip", overwrite = TRUE)   # unzip to create "activity.csv" 
 unzip_date <- date() 
 ```   
-The raw .csv file needs to be read into R, its structures evaluated, and some data transformations made to prepare the data for use in the following Analysis steps. So let's read it in and confirm its contents.  
+The raw .csv file needs to be read into R, its structures evaluated, and some data transformations made to prepare the data for use in the following Analysis steps. So let's first read it in and confirm its contents and structure.  
 ```{r read data}
 raw <- read.csv("./activity.csv", stringsAsFactors = FALSE)
-summary(raw)
-raw_summary <- summary(raw)
+summary(raw) # display a summary of data content
+raw_summary <- summary(raw) # save the summary for later
+str(raw) # display the strucutre of the data content
 ```
-To simplify the following statistical analysis, we will reformat date (a character string) to a date format and the interval (an integer) elements into a class that allows for certain Date/Time manipulations. We will use the lubridate package to execute the transformations and keep the originals as well. The tricky one will be the interval to time formatting, so let's take a closer look at how the data for the 5 minute intravals are structured.
+To simplify the following statistical analysis, we will reformat the interval column (an integer) element into a character string that can then be concatenated with the date column and create a class that allows for more fleible Date/Time manipulations. We will need the lubridate package to execute the the final transformations. And we will keep the originals as well. 
+
+The tricky one will be the interval to time formatting, so let's take a closer look at how the data for the 5 minute intravals are structured so we can perform the correct coding logic.
 ```{r understanding interval}
-raw[c(1,2,10,13,22,277,288),]
+library(lubridate)
+raw[c(1,2,10,13,22,277,288),] # select out 7 rows of data
 ```
-We see the first interval is 0, the second is 5 and the 10th 45. Which implies the interval marks the begining of each five (5) minute interval. As there are 12, five minute intervals per hour, we expect that interval 13 will be the first interval of the 2nd or 1 o'clock hour.  And we see it is identified as "100".  To further confirm the pattern let's use the 10th and 22nd intervals which should reflect the 45th minute of hour 0 and 1 - and viola. 
+We see the first interval is identified as 0, the second as 5 and the 10th 45. Which implies the interval marks the begining of each five (5) minute interval. As there are 12, five minute intervals per hour, we expect that interval 13 will be the first interval of the 2nd or 1 o'clock hour.  And we see it is identified as "100".  To further confirm the pattern let's use the 10th and 22nd intervals which should reflect the 45th minute of hours 0 and 1 - and viola our hypothesis is confirmed. 
   
-The final test is that the 277th interval should be the first 5 minute or '00' block of hour 23 and the final interval (12 x 24 == 288) is "2355" - which they are.  So now we know that we need to convert "integer" to "character" and then parse the hour and minutes into a character pattern that can be easily converted into a date/time format when paired with date.  
+The final test is that the 277th interval should be the first 5 minute or '00' block of hour 23 and the final interval (12 x 24 == 288) is "2355" - which we can see in our test. 
+
+So now we know how we need to convert "integer" to "character" (first two digits are hour and second two are minutes of the start of the interval) and then parse the hour and minutes into a character pattern that can be merged with the date column and then easily converted into our choosen date/time format.  
   
 Finally we will print out the summary of the new 'data' to confirm the core information has not been improperly transformed. Here goes:
 ```{r date time conversions}
 library(lubridate)
-class(raw$interval) <- "character"
-interval2time <- function(val) {
-    if (nchar(val) < 2) { # for hour 0
-        val <- paste0("00:0",val) }
-    else if (nchar(val) < 3) {  # for hour 0  and minutes > 5
-        val <- paste0("00:", val) }
-    else if (nchar(val) < 4) { # for hours 1 to 9
-        val <- paste0("0", substr(val,1,1),":",substr(val,2,3)) }
-    else {val <- paste0(substr(val,1,2),":",substr(val,3,4)) }  # for hours 10 to 23  
-    } 
-raw$time <- sapply(raw$interval,interval2time)
-charDT <- paste(raw$date, raw$time)
-DateTime <- ymd_hm(charDT)
-data <- cbind(raw, DateTime)
 
-raw_summary
-summary(data)
+# Let's create a special use functions to use in a simple sapply()
+interval2time <- function(val) {
+    if (nchar(val) < 2) { # for hour 0 - add three 0s to create a 4 character string
+        val <- paste0("000",val) }
+    else if (nchar(val) < 3) {  # for hour 0 and minutes > 5 - add two 0s
+        val <- paste0("00", val) }
+    else if (nchar(val) < 4) { # for hours 1 to 9 - add one 0
+        val <- paste0("0", substr(val,1,1),substr(val,2,3)) }
+    else {val <- paste0(substr(val,1,2),substr(val,3,4)) }  # for hours 10 to 23  
+    } 
+
+# Now we are ready to do our transformations
+raw$charInterval <- sapply(raw$interval, as.character) # Integer as character
+raw$time <- sapply(raw$charInterval,interval2time)  # use our special function
+charDT <- paste(raw$date, raw$time) # concatenate character fields Date and Time
+raw$dateTime <- ymd_hm(charDT)  # create our final Date/Time field as POSIXct
+
+# let's compare and validate that we got the desired transformations
+raw_summary  #the snapshot we saved earlier
+summary(raw) #what our data.frame contains after our transformations
+str(raw)
 ```
-The comparison of the summary(raw) output and summary(data) output, shows that the steps and date column remain exactly as before, the interval column is transformed into a character vector and the resulting time and DateTime columns mimic the orginal data as desired.  Finally we created a factor vector for Weekday/end to allow for segmentation of the data set by that dimension of time. We are good to go!!  
+The comparison of the summary(raw) output and summary(data) output, shows that the steps and date columns contents remain exactly as before, the interval column is transformed into a character vector and the DateTime column hold the "same" content as the orginal data in their new data formats.  
+
+Finally we must created a factor vector for Weekday/end to allow for segmentation of the data set by that dimension of time. As the data set is relatively small, we will do this in a rather verbose process so we can validate each step.  For larger data sets, we can and should compress the steps to reduce the number of columns in our final data set prepared for analysis.
+```{r Day of Week parsing}
+dow <- weekdays(as.Date(raw$date))
+dowID <- wday(as.Date(raw$date)) # sunday = 1, monday = 2 etc...
+dowIDMon <- ifelse(wday(dowID)==1,6,wday(dowID)-2) # make Sunday = 6 and Monday = 0
+WeekDays <- ifelse(dowIDMon < 5, "Weekday", "Weekend") # weekend = 5 & 6, weekday < 5
+data <- cbind(raw, dow, dowID, dowIDMon, WeekDays) # create our analysis data.frame
+summary(data)
+str(data)
+```
+We can see from our outputs that Monday was properly transformed, and labels a weekday.  ANd the counts of each day of the week adds up to the total observations for each weekend or weekday subgrouping.  So we are good to go.
 
 ## Analysis Steps
 ### 1) What is mean total number of steps taken per day?
-To display the daily total of steps the raw data is aggregated by day and the results outputted to an analysis data set "stepsPerDay". The following plot shows the daily totals, followed by the mean and median.
+To display the daily total of steps the data must be aggregated by day and the results outputted to an analysis data set "stepsPerDay" with 53 observations and 2 variables. From this new data.frame, we will plot the Histogram and calculate the mean and median of the daily totals. The mean is also plotted on the histogram.
 ```{r Req_1}
-library(ggplot2, stringr)
 stepsPerDay <- aggregate(steps ~ date, data = data, FUN = sum)
 meanSPD <- round(mean(stepsPerDay$steps),0)
 medianSPD <- median(stepsPerDay$steps)
+
+hist(stepsPerDay$steps, breaks=9, col = "mistyrose1",
+     main= "Steps Per Day", xlab= "Steps Per Day")
+abline(v=meanSPD, lwd=3)
 ```
-```{r Plot_1, fig.height = 4, fig.width = 8, fig.align='center'}
-g1 <- ggplot(stepsPerDay, aes(date, steps))
-g1 + geom_bar(stat = "identity") + 
-    theme_bw() +
-    geom_hline(yintercept = meanSPD, colour = "red") +
-    theme(axis.text.x=element_text(angle = -90, hjust = 0)) +
-    labs(title = "Steps Per Day") +
-    labs(x = "Date") +
-    labs(y = "Total Steps")
-```
-  
-A summary of this set shows the mean to be `r format(meanSPD, big.mark = ",")` (as a red line in the plot) and the median to be `r format(medianSPD, big.mark = ",")`.  
+Numerically stated, the mean is `r format(meanSPD, big.mark = ",")` (the black line in the plot) and the median is `r format(medianSPD, big.mark = ",")`.  
 
 ### 2) What is the average daily activity pattern?
-Now we know something about the daily totals, let's alter the point of view and look inside the days, and see if we can see any unique characteristics of the intervals as they average out over the 53 of 60 days for which we have data.  To do this we will aggregate the data by the new 'time' field, which will tell us the begining time of the 5 minute interval with the highest average number of steps.
+Now we know something about the number of days mesured and their daily totals, let's alter the point of view and look inside the days, and see if we can see any unique characteristics of the intervals as they average out over the 53 of 60 days for which we have data.  
+To do this we will aggregate the data by the new 'time' field and create another aggregated data.frame "aveSPI" for steps per interval. This will tell us the begining time of the 5 minute interval with the highest average number of steps and the number of steps taken during that 5 minute span.
 ```{r Interval_Average_over_days}
-aveStepsPerInterval <- aggregate(steps ~ time, data = data, FUN = mean)
-aveStepsPerInterval <- cbind(t = 1:288,aveStepsPerInterval)
-maxASPI <- max(aveStepsPerInterval$steps)
-maxInt <- aveStepsPerInterval[aveStepsPerInterval$steps == maxASPI,]
-maxTime <- maxInt[,1]
-maxSteps <- round(maxInt[,3],1) 
+aveSPI <- aggregate(steps ~ time, data = data, FUN = mean)
+aveSPI <- cbind(t = 1:288,aveSPI)
+maxASPI <- max(aveSPI$steps)
+maxInt <- aveSPI[aveSPI$steps == maxASPI,]
+maxTime <- maxInt[,2]
+maxSteps <- round(maxInt[,3],0) 
 
-plot(aveStepsPerInterval$t, aveStepsPerInterval$steps, type = 'l', 
+
+plot(aveSPI$t, aveSPI$steps, type = 'l', 
      main = "Average of Steps Per Interval",
-     col = "black",  xaxt = 'n', #pch = 19,
+     col = "black",  #xaxt = 'n', #pch = 19,
      xlab = "Start Time of 5-Minute Interval",
      ylab = "Average of Steps")
-#axisTicks(usr = c(1,288), log = FALSE, nint = 23)
-#axis(1, xaxp = c(0,aveStepsPerInterval$time))
-abline(v = maxTime)
-```
-  
-For the 288 5-minute interval averages we see that the `r maxInt[2]` interval has the highest average (`r maxSteps`) over the 53 days of observed measurements.  
+abline(v = maxTime, col = "red", lwd = 2)
+``` 
+For the 288 5-minute interval averages we see that the `r maxTime` interval has the highest average number of steps - (`r maxSteps`) - for the 53 days of observed measurements.  
 
 ### 3) Imputing missing values
 Because there are `r raw_summary[7, 1]` in the summary of raw data or `r round(as.numeric(substr(raw_summary[7,1], 9,12)) / dim(raw)[1]*100, 2)` percent of the data set, we will need to explore methods of imputing the missing values in order to smooth out the data and make more naunced conclusions related to the activity levels of our test subject.  
 
-This is beyond my R skills for the given time to complete the project.  From a markdown perspective, I would show code to create a data set with an added factor variable indicating original vs imputed using rbind()  and then display a ggplot with a facet for each factor element.  See below for ggplot example.
+While we all intuitively know that different days of the week have potentially different activity levels throughout the day, for this question we will assume a consistent "typical" step pattern for the 288 intervals.  We will then insert the "typical" value related to any interval that is missing.  
 
-### 4) Are there differences in activity patterns between weekdays and weekends?  
-To execute this requirement we will further process the data to identify Day of Week and then segment between weekday and weekend (Saturday and Sunday in the US).  
 
-``` {r Weekdays}
-data$Day <- sapply(data$DateTime, weekdays) # identify date as a Day of Week
-data$DayEnd <- data$Day # replicate to allow for refactoring
-dayEnd <- function(day) {
-        if (substr(day,1,1) == "S") {
-            day <- as.character("Weekend")}
-        else {day <- as.character("Weekday")}
-}
-data$DayEnd <- sapply(data$DayEnd, dayEnd)
-dayEndSPI <- aggregate(steps ~ interval + Day, data = data, FUN = sum)
+
+ 
+``` {r imputed values}
+# Prepare inferred data for use as the replacement values
+typicalSPI <- aggregate(steps ~ interval, data = data, FUN = sum)
+colnames(typicalSPI) <- c("interval","typSteps")
+
+# Add a column with the inferred data from typicalSPI based on a lookup of interval
+datamini <- merge(datamini[, 1:11], typicalSPI, by="interval")
+inferSteps <- function(steps) {
+    if (is.na(steps))  {
+        stepInfer <- typSteps}
+    else stepInfer <- steps
+    }   
+
+# find and replace NAs with our function.  Add result as a new column 
+datamini$stepInf <- apply(datamini[,"steps"],1, inferSteps)
 ```
-From there we can see if the interval pattern is different between the two day week factors.  (note: couldn't figure out how to coerce day of week into the weekDay/End factor using if or other functions.  From a markdown perspective I hope the use of the markdown and git tools are sufficient for partial credit of the attempt - given the 15+ hours I have spent.)
+
+### 4) Are there differences in activity patterns between weekdays and weekends? 
+Our Aggregate of data creates two set of intervals - one of Weekdays and one for WeekEnd days. From there we can see if the interval pattern is different between the two day week factors. 
 ``` {r g3}
 g3 <- ggplot(dayEndSPI, aes(interval, steps))
 g3 + geom_point() + # facet_grid(as.factor(Day)) +  not sure why this is throwing an error. No more time to debug :-(  sorry, I HATE doing incomplete work!!
@@ -139,6 +160,4 @@ g3 + geom_point() + # facet_grid(as.factor(Day)) +  not sure why this is throwin
   labs(title = "Steps by 5-Minute Interval for Weekdays vs. Weekends") +
   labs(y = "Total Steps")
 ```
-If we could get teh graph to generate we would be able to identify the difference - but alas my ggplot skills are not up to the task at this time.  
 
-Again, my sincerest apologies for submitting code that is less than satifying to grade.

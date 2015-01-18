@@ -35,8 +35,15 @@ g + geom_bar(stat = "identity") +
     labs(x = "Date") +
     labs(y = "Total Steps")
 print(g)
-# 2) Calculate and report the mean and median total number of steps taken per day
 
+# 2) Calculate and report the mean and median total number of steps taken per day
+mry <- do.call(rbind, by(movies, round(movies$rating), function(df) {
+    nums <- tapply(df$length, df$year, length)
+    data.frame(rating=round(df$rating[1]), year = as.numeric(names(nums)), number=as.vector(nums))
+}))
+
+p <- ggplot(mry, aes(x=year, y=number, group=rating))
+p + geom_line()
 
 ## Requirement 2 -- What is the average daily activity pattern?
 # 1) Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and
