@@ -79,11 +79,13 @@ The comparison of the summary(raw) output and summary(data) output, shows that t
 
 Finally we must created a factor vector for Weekday/end to allow for segmentation of the data set by that dimension of time. As the data set is relatively small, we will do this in a rather verbose process so we can validate each step.  For larger data sets, we can and should compress the steps to reduce the number of columns in our final data set prepared for analysis.
 ```{r Day of Week parsing}
+id <- as.numeric(rownames(raw))
 dow <- weekdays(as.Date(raw$date))
 dowID <- wday(as.Date(raw$date)) # sunday = 1, monday = 2 etc...
 dowIDMon <- ifelse(wday(dowID)==1,6,wday(dowID)-2) # make Sunday = 6 and Monday = 0
 WeekDays <- ifelse(dowIDMon < 5, "Weekday", "Weekend") # weekend = 5 & 6, weekday < 5
-data <- cbind(raw, dow, dowID, dowIDMon, WeekDays) # create our analysis data.frame
+data <- cbind(id, raw, dow, dowID, dowIDMon, WeekDays) # create our analysis data.frame
+
 summary(data)
 str(data)
 ```
@@ -117,7 +119,7 @@ maxSteps <- round(maxInt[,3],0)
 
 plot(aveSPI$t, aveSPI$steps, type = 'l', 
      main = "Average of Steps Per Interval",
-     col = "black",  #xaxt = 'n', #pch = 19,
+     col = "black",  xaxt = 'n', #pch = 19,
      xlab = "Start Time of 5-Minute Interval",
      ylab = "Average of Steps")
 abline(v = maxTime, col = "red", lwd = 2)
@@ -129,35 +131,48 @@ Because there are `r raw_summary[7, 1]` in the summary of raw data or `r round(a
 
 While we all intuitively know that different days of the week have potentially different activity levels throughout the day, for this question we will assume a consistent "typical" step pattern for the 288 intervals.  We will then insert the "typical" value related to any interval that is missing.  
 
-
-
- 
 ``` {r imputed values}
 # Prepare inferred data for use as the replacement values
 typicalSPI <- aggregate(steps ~ interval, data = data, FUN = sum)
 colnames(typicalSPI) <- c("interval","typSteps")
 
 # Add a column with the inferred data from typicalSPI based on a lookup of interval
-datamini <- merge(datamini[, 1:11], typicalSPI, by="interval")
-inferSteps <- function(steps) {
-    if (is.na(steps))  {
-        stepInfer <- typSteps}
-    else stepInfer <- steps
-    }   
+data <- merge(data[, 1:11], typicalSPI, by="interval", sort = FALSE)
+data <- data[ order(data$id,decreasing =FALSE), ]
+row.names(data) <- data$id
+    
+# find and replace NAs with our function. create as data.frame and add result as a new column 
+stepInf <- apply(data[c("steps", "typSteps")], 1, function(x)
+    ifelse(is.na(x[1]), x[2], x[1]) )
 
-# find and replace NAs with our function.  Add result as a new column 
-datamini$stepInf <- apply(datamini[,"steps"],1, inferSteps)
+df.stepInf <- data.frame(stepInf=stepInf, id=c(1:length(stepInf)))
+
+# Clean up and get our analysis data set
+data2 <- merge(data[c(1, 2, 3, 4, 6, 7, 10, 11)], df.stepInf, by="id" )
 ```
+So the data is ready. Let's take a look
+```{r imputed data}
+stepsPerDay2 <- aggregate(stepInf ~ date, data = data2, FUN = sum)
+meanSPD2 <- round(mean(stepsPerDay2$stepInf),0)
+medianSPD2 <- median(stepsPerDay2$stepInf)
 
+hist(stepsPerDay$steps, breaks=9, col = "mistyrose1",
+     main= "Steps Per Day", xlab= "Steps Per Day")
+abline(v=meanSPD, lwd=3)
+```
 ### 4) Are there differences in activity patterns between weekdays and weekends? 
 Our Aggregate of data creates two set of intervals - one of Weekdays and one for WeekEnd days. From there we can see if the interval pattern is different between the two day week factors. 
 ``` {r g3}
-g3 <- ggplot(dayEndSPI, aes(interval, steps))
-g3 + geom_point() + # facet_grid(as.factor(Day)) +  not sure why this is throwing an error. No more time to debug :-(  sorry, I HATE doing incomplete work!!
-  geom_smooth(method = "lm") +
-  theme_bw() +
-  theme(axis.text.x=element_text(angle = -90, hjust = 0)) +
-  labs(title = "Steps by 5-Minute Interval for Weekdays vs. Weekends") +
-  labs(y = "Total Steps")
+library(ggplot2)
+# Aggregate our data by interval and WeekDays
+dayEndSPI <- aggregate(steps ~ interval + WeekDays, data = data, FUN = mean)
+# draw the plot
+g3 <- ggplot(dayEndSPI, aes(x=interval, y=steps))
+g3 + geom_line() + facet_grid(WeekDays ~ .) +
+    theme_bw() +
+    geom_smooth() +
+    theme(axis.text.x=element_text(angle = -90, hjust = 0)) +
+    labs(title = "Steps by 5-Minute Interval for Weekdays vs. Weekends") +
+    labs(y = "Total Steps")
 ```
-
+We see that Weekdays are more active in the mornign hours, before 10:00 and that Weekends get off to a slower start, but have greater activity in the afternoons.  The smoothed line makes this more apparent.

@@ -103,7 +103,7 @@ charDT <- paste(raw$date, raw$time) # concatenate character fields Date and Time
 raw$dateTime <- ymd_hm(charDT)  # create our final Date/Time field as POSIXct
 
 # let's compare and validate that we got the desired transformations
-raw_summary
+raw_summary  #the snapshot we saved earlier
 ```
 
 ```
@@ -118,7 +118,7 @@ raw_summary
 ```
 
 ```r
-summary(raw)
+summary(raw) #what our data.frame contains after our transformations
 ```
 
 ```
@@ -158,39 +158,41 @@ The comparison of the summary(raw) output and summary(data) output, shows that t
 Finally we must created a factor vector for Weekday/end to allow for segmentation of the data set by that dimension of time. As the data set is relatively small, we will do this in a rather verbose process so we can validate each step.  For larger data sets, we can and should compress the steps to reduce the number of columns in our final data set prepared for analysis.
 
 ```r
+id <- as.numeric(rownames(raw))
 dow <- weekdays(as.Date(raw$date))
 dowID <- wday(as.Date(raw$date)) # sunday = 1, monday = 2 etc...
 dowIDMon <- ifelse(wday(dowID)==1,6,wday(dowID)-2) # make Sunday = 6 and Monday = 0
 WeekDays <- ifelse(dowIDMon < 5, "Weekday", "Weekend") # weekend = 5 & 6, weekday < 5
-data <- cbind(raw, dow, dowID, dowIDMon, WeekDays) # create our analysis data.frame
+data <- cbind(id, raw, dow, dowID, dowIDMon, WeekDays) # create our analysis data.frame
+
 summary(data)
 ```
 
 ```
-##      steps            date              interval      charInterval      
-##  Min.   :  0.00   Length:17568       Min.   :   0.0   Length:17568      
-##  1st Qu.:  0.00   Class :character   1st Qu.: 588.8   Class :character  
-##  Median :  0.00   Mode  :character   Median :1177.5   Mode  :character  
-##  Mean   : 37.38                      Mean   :1177.5                     
-##  3rd Qu.: 12.00                      3rd Qu.:1766.2                     
-##  Max.   :806.00                      Max.   :2355.0                     
-##  NA's   :2304                                                           
-##      time              dateTime                          dow      
-##  Length:17568       Min.   :2012-10-01 00:00:00   Friday   :2592  
-##  Class :character   1st Qu.:2012-10-16 05:58:45   Monday   :2592  
-##  Mode  :character   Median :2012-10-31 11:57:30   Saturday :2304  
-##                     Mean   :2012-10-31 11:57:30   Sunday   :2304  
-##                     3rd Qu.:2012-11-15 17:56:15   Thursday :2592  
-##                     Max.   :2012-11-30 23:55:00   Tuesday  :2592  
-##                                                   Wednesday:2592  
-##      dowID      dowIDMon        WeekDays    
-##  Min.   :1   Min.   :0.000   Weekday:12960  
-##  1st Qu.:2   1st Qu.:1.000   Weekend: 4608  
-##  Median :4   Median :3.000                  
-##  Mean   :4   Mean   :2.918                  
-##  3rd Qu.:6   3rd Qu.:5.000                  
-##  Max.   :7   Max.   :6.000                  
-## 
+##        id            steps            date              interval     
+##  Min.   :    1   Min.   :  0.00   Length:17568       Min.   :   0.0  
+##  1st Qu.: 4393   1st Qu.:  0.00   Class :character   1st Qu.: 588.8  
+##  Median : 8784   Median :  0.00   Mode  :character   Median :1177.5  
+##  Mean   : 8784   Mean   : 37.38                      Mean   :1177.5  
+##  3rd Qu.:13176   3rd Qu.: 12.00                      3rd Qu.:1766.2  
+##  Max.   :17568   Max.   :806.00                      Max.   :2355.0  
+##                  NA's   :2304                                        
+##  charInterval           time              dateTime                  
+##  Length:17568       Length:17568       Min.   :2012-10-01 00:00:00  
+##  Class :character   Class :character   1st Qu.:2012-10-16 05:58:45  
+##  Mode  :character   Mode  :character   Median :2012-10-31 11:57:30  
+##                                        Mean   :2012-10-31 11:57:30  
+##                                        3rd Qu.:2012-11-15 17:56:15  
+##                                        Max.   :2012-11-30 23:55:00  
+##                                                                     
+##         dow           dowID      dowIDMon        WeekDays    
+##  Friday   :2592   Min.   :1   Min.   :0.000   Weekday:12960  
+##  Monday   :2592   1st Qu.:2   1st Qu.:1.000   Weekend: 4608  
+##  Saturday :2304   Median :4   Median :3.000                  
+##  Sunday   :2304   Mean   :4   Mean   :2.918                  
+##  Thursday :2592   3rd Qu.:6   3rd Qu.:5.000                  
+##  Tuesday  :2592   Max.   :7   Max.   :6.000                  
+##  Wednesday:2592
 ```
 
 ```r
@@ -198,7 +200,8 @@ str(data)
 ```
 
 ```
-## 'data.frame':	17568 obs. of  10 variables:
+## 'data.frame':	17568 obs. of  11 variables:
+##  $ id          : num  1 2 3 4 5 6 7 8 9 10 ...
 ##  $ steps       : int  NA NA NA NA NA NA NA NA NA NA ...
 ##  $ date        : chr  "2012-10-01" "2012-10-01" "2012-10-01" "2012-10-01" ...
 ##  $ interval    : int  0 5 10 15 20 25 30 35 40 45 ...
@@ -210,12 +213,13 @@ str(data)
 ##  $ dowIDMon    : num  0 0 0 0 0 0 0 0 0 0 ...
 ##  $ WeekDays    : Factor w/ 2 levels "Weekday","Weekend": 1 1 1 1 1 1 1 1 1 1 ...
 ```
+We can see from our outputs that Monday was properly transformed, and labels a weekday.  ANd the counts of each day of the week adds up to the total observations for each weekend or weekday subgrouping.  So we are good to go.
+
 ## Analysis Steps
 ### 1) What is mean total number of steps taken per day?
-To display the daily total of steps the data must be aggregated by day and the results outputted to an analysis data set "stepsPerDay". The following histogram shows the frequency of daily totals and the mean.
+To display the daily total of steps the data must be aggregated by day and the results outputted to an analysis data set "stepsPerDay" with 53 observations and 2 variables. From this new data.frame, we will plot the Histogram and calculate the mean and median of the daily totals. The mean is also plotted on the histogram.
 
 ```r
-library(ggplot2, stringr)
 stepsPerDay <- aggregate(steps ~ date, data = data, FUN = sum)
 meanSPD <- round(mean(stepsPerDay$steps),0)
 medianSPD <- median(stepsPerDay$steps)
@@ -229,7 +233,8 @@ abline(v=meanSPD, lwd=3)
 Numerically stated, the mean is 10,766 (the black line in the plot) and the median is 10,765.  
 
 ### 2) What is the average daily activity pattern?
-Now we know something about the daily totals, let's alter the point of view and look inside the days, and see if we can see any unique characteristics of the intervals as they average out over the 53 of 60 days for which we have data.  To do this we will aggregate the data by the new 'time' field, which will tell us the begining time of the 5 minute interval with the highest average number of steps.
+Now we know something about the number of days mesured and their daily totals, let's alter the point of view and look inside the days, and see if we can see any unique characteristics of the intervals as they average out over the 53 of 60 days for which we have data.  
+To do this we will aggregate the data by the new 'time' field and create another aggregated data.frame "aveSPI" for steps per interval. This will tell us the begining time of the 5 minute interval with the highest average number of steps and the number of steps taken during that 5 minute span.
 
 ```r
 aveSPI <- aggregate(steps ~ time, data = data, FUN = mean)
@@ -240,46 +245,64 @@ maxTime <- maxInt[,2]
 maxSteps <- round(maxInt[,3],0) 
 
 
-
-plot(aveSPI$time, aveSPI$steps, type = 'l', 
+plot(aveSPI$t, aveSPI$steps, type = 'l', 
      main = "Average of Steps Per Interval",
-     col = "black",  #xaxt = 'n', #pch = 19,
+     col = "black",  xaxt = 'n', #pch = 19,
      xlab = "Start Time of 5-Minute Interval",
      ylab = "Average of Steps")
-abline(v = maxTime, col = "red")
+abline(v = maxTime, col = "red", lwd = 2)
 ```
 
 ![](PA1_template_files/figure-html/Interval_Average_over_days-1.png) 
-  
-For the 288 5-minute interval averages we see that the 0835 interval has the highest average (206) over the 53 days of observed measurements.  
+For the 288 5-minute interval averages we see that the 0835 interval has the highest average number of steps - (206) - for the 53 days of observed measurements.  
 
 ### 3) Imputing missing values
 Because there are NA's   :2304   in the summary of raw data or 13.11 percent of the data set, we will need to explore methods of imputing the missing values in order to smooth out the data and make more naunced conclusions related to the activity levels of our test subject.  
 
-Because we all intuitively know that different days of the week have potentially different activity levels throughout the day, we will use our known data in a manner that will identify each typical interval for day of the week (dow) combination and save it off into a new data.frame.  We will then insert the "typical" value related to any interval that is missing.  
-
-This approach admittedly does NOT account for anomolous "sleeping hours" intervals - where a lack of steps is logical and desired.  A future inhancement would be to evaluate the 8 hour time block that is the "sleeping hours" and if the measured interval being evaluated is zero AND in that sleeping block, then the "typical" value would not be overwritten.  At this time, that enhancement is out of scope to the project.
+While we all intuitively know that different days of the week have potentially different activity levels throughout the day, for this question we will assume a consistent "typical" step pattern for the 288 intervals.  We will then insert the "typical" value related to any interval that is missing.  
 
 
 ```r
-### 4) Are there differences in activity patterns between weekdays and weekends?  
+# Prepare inferred data for use as the replacement values
+typicalSPI <- aggregate(steps ~ interval, data = data, FUN = sum)
+colnames(typicalSPI) <- c("interval","typSteps")
+
+# Add a column with the inferred data from typicalSPI based on a lookup of interval
+data <- merge(data[, 1:11], typicalSPI, by="interval", sort = FALSE)
+data2 <- data[ order(data$id,decreasing =FALSE), ]
+row.names(data2) <- data2$id
+    
+# find and replace NAs with our function. create as data.frame and add result as a new column 
+stepInf <- apply(data2[c("steps", "typSteps")], 1, function(x)
+    ifelse(is.na(x[1]), x[2], x[1]) )
+
+df.stepInf <- data.frame(stepInf=stepInf, id=c(1:length(stepInf)))
+
+# Clean up and get our analysis data set
+data2 <- merge(data[c(1, 2, 3, 6, 7, 10, 11)], df.stepInf, by="id" )
 ```
 
-```r
-# Prepare data for use in this question
-dayEndSPI <- aggregate(steps ~ interval + WeekDays, data = data, FUN = sum)
-```
+### 4) Are there differences in activity patterns between weekdays and weekends? 
 Our Aggregate of data creates two set of intervals - one of Weekdays and one for WeekEnd days. From there we can see if the interval pattern is different between the two day week factors. 
 
 ```r
-g3 <- ggplot(dayEndSPI, aes(interval, steps))
-g3 + geom_point() + # facet_grid(as.factor(Day)) +  not sure why this is throwing an error. No more time to debug :-(  sorry, I HATE doing incomplete work!!
-  geom_smooth(method = "lm") +
-  theme_bw() +
-  theme(axis.text.x=element_text(angle = -90, hjust = 0)) +
-  labs(title = "Steps by 5-Minute Interval for Weekdays vs. Weekends") +
-  labs(y = "Total Steps")
+library(ggplot2)
+# Aggregate our data by interval and WeekDays
+dayEndSPI <- aggregate(steps ~ interval + WeekDays, data = data, FUN = mean)
+# draw the plot
+g3 <- ggplot(dayEndSPI, aes(x=interval, y=steps))
+g3 + geom_line() + facet_grid(WeekDays ~ .) +
+    theme_bw() +
+    geom_smooth() +
+    theme(axis.text.x=element_text(angle = -90, hjust = 0)) +
+    labs(title = "Steps by 5-Minute Interval for Weekdays vs. Weekends") +
+    labs(y = "Total Steps")
+```
+
+```
+## geom_smooth: method="auto" and size of largest group is <1000, so using loess. Use 'method = x' to change the smoothing method.
+## geom_smooth: method="auto" and size of largest group is <1000, so using loess. Use 'method = x' to change the smoothing method.
 ```
 
 ![](PA1_template_files/figure-html/g3-1.png) 
-
+We see that Weekdays are more active in the mornign hours, before 10:00 and that Weekends get off to a slower start, but have greater activity in the afternoons.  The smoothed line makes this more apparent.
