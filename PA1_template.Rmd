@@ -133,7 +133,7 @@ While we all intuitively know that different days of the week have potentially d
 
 ``` {r imputed values}
 # Prepare inferred data for use as the replacement values
-typicalSPI <- aggregate(steps ~ interval, data = data, FUN = sum)
+typicalSPI <- aggregate(steps ~ interval, data = data, FUN = mean)
 colnames(typicalSPI) <- c("interval","typSteps")
 
 # Add a column with the inferred data from typicalSPI based on a lookup of interval
@@ -151,13 +151,14 @@ df.stepInf <- data.frame(stepInf=stepInf, id=c(1:length(stepInf)))
 data2 <- merge(data[c(1, 2, 3, 4, 6, 7, 10, 11)], df.stepInf, by="id" )
 ```
 So the data is ready. Let's take a look
+
 ```{r imputed data}
 stepsPerDay2 <- aggregate(stepInf ~ date, data = data2, FUN = sum)
 meanSPD2 <- round(mean(stepsPerDay2$stepInf),0)
 medianSPD2 <- median(stepsPerDay2$stepInf)
 
-hist(stepsPerDay$steps, breaks=9, col = "mistyrose1",
-     main= "Steps Per Day", xlab= "Steps Per Day")
+hist(stepsPerDay2$stepInf, col = "mistyrose1",
+     main= "Steps Per Day - imputed Data", xlab= "Steps Per Day")
 abline(v=meanSPD, lwd=3)
 ```
 ### 4) Are there differences in activity patterns between weekdays and weekends? 
